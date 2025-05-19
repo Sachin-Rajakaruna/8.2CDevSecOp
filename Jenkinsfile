@@ -30,5 +30,17 @@ pipeline {
                 bat 'npm audit || exit /b 0'
             }
         }
+        stage('Build') {
+            steps {
+                echo "Building..."
+            }
+            post {
+                success {
+                    mail to: 'sachinrasmitha@gmail.com',
+                         subject: 'Build Status Email',
+                         body: 'Build Was Successful'
+                }
+            }
+        }
     }
 }
