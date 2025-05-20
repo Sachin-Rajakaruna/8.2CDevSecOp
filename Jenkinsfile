@@ -55,15 +55,21 @@ pipeline {
             steps {
                 script {
                     def message = """
-Build Was Successful
+<p><strong>Build Completed</strong></p>
+<ul>
+    <li>Run Tests: <b>${env.TEST_STATUS}</b></li>
+    <li>Security Scan: <b>${env.SCAN_STATUS}</b></li>
+</ul>
+<p>See attached console log for more information.</p>
+"""
 
-Stage Results:
-- Run Tests: ${env.TEST_STATUS}
-- Security Scan: ${env.SCAN_STATUS}
-                    """
-                    mail to: 'sachinrasmitha@gmail.com',
-                         subject: 'Build Status Email',
-                         body: message
+                    emailext(
+                        to: 'sachinrasmitha@gmail.com',
+                        subject: "Build Summary – Tests: ${env.TEST_STATUS}, Scan: ${env.SCAN_STATUS}",
+                        body: message,
+                        mimeType: 'text/html',
+                        attachLog: true
+                    )
                 }
             }
         }
