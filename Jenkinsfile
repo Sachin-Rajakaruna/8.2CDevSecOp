@@ -1,3 +1,6 @@
+def testStatus = 'UNKNOWN'
+def scanStatus = 'UNKNOWN'
+
 pipeline {
     agent any
 
@@ -17,17 +20,8 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    // Use script-level variable for later reference
-                    if (!binding.hasVariable('testStatus')) {
-                        binding.setVariable('testStatus', 'UNKNOWN')
-                    }
-
                     def result = bat(script: 'npm test', returnStatus: true)
-                    if (result == 0) {
-                        testStatus = 'SUCCESS'
-                    } else {
-                        testStatus = 'FAILURE'
-                    }
+                    testStatus = (result == 0) ? 'SUCCESS' : 'FAILURE'
                 }
             }
         }
@@ -41,16 +35,8 @@ pipeline {
         stage('NPM Audit (Security Scan)') {
             steps {
                 script {
-                    if (!binding.hasVariable('scanStatus')) {
-                        binding.setVariable('scanStatus', 'UNKNOWN')
-                    }
-
                     def result = bat(script: 'npm audit', returnStatus: true)
-                    if (result == 0) {
-                        scanStatus = 'SUCCESS'
-                    } else {
-                        scanStatus = 'FAILURE'
-                    }
+                    scanStatus = (result == 0) ? 'SUCCESS' : 'FAILURE'
                 }
             }
         }
