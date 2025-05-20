@@ -4,7 +4,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Sachin-Rajakaruna/8.2CDevSecOp.git'
+                git branch: 'main',
+                    url: 'https://github.com/Sachin-Rajakaruna/8.2CDevSecOp.git'
             }
         }
 
@@ -33,16 +34,36 @@ pipeline {
         }
 
         stage('Email Notification') {
+            // we leave steps empty, all work done in post
             steps {
-                echo "Building..."
+                echo 'Preparing to send email...'
             }
             post {
                 success {
-                    mail to: 'sachinrasmitha@gmail.com',
-                         subject: 'Build Status Email',
-                         body: 'Build Was Successful'
+                    emailext(
+                        to: 'sachinrasmitha@gmail.com',
+                        subject: "✅ Build SUCCEEDED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        body: """<p>Your Jenkins build <b>${env.JOB_NAME} #${env.BUILD_NUMBER}</b> completed <b>SUCCESSFULLY</b>.</p>
+                                 <p>Please find the attached console log for details.</p>""",
+                        attachLog: true
+                    )
+                }
+                failure {
+                    emailext(
+                        to: 'sachinrasmitha@gmail.com',
+                        subject: "❌ Build FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                        body: """<p>Your Jenkins build <b>${env.JOB_NAME} #${env.BUILD_NUMBER}</b> finished with <b>FAILURE</b>.</p>
+                                 <p>Please review the attached console log to diagnose the issue.</p>""",
+                        attachLog: true
+                    )
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            echo 'Pipeline run complete.'
         }
     }
 }
