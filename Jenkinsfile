@@ -54,22 +54,18 @@ pipeline {
         stage('Email Notification') {
             steps {
                 script {
-                    def message = """
-<p><strong>Build Completed</strong></p>
-<ul>
-    <li>Run Tests: <b>${env.TEST_STATUS}</b></li>
-    <li>Security Scan: <b>${env.SCAN_STATUS}</b></li>
-</ul>
-<p>See attached console log for more information.</p>
-"""
+                    def message = """\
+Build Completed.
 
-                    emailext(
-                        to: 'sachinrasmitha@gmail.com',
-                        subject: "Build Summary – Tests: ${env.TEST_STATUS}, Scan: ${env.SCAN_STATUS}",
-                        body: message,
-                        mimeType: 'text/html',
-                        attachLog: true
-                    )
+Stage Status:
+- Run Tests: ${env.TEST_STATUS}
+- Security Scan: ${env.SCAN_STATUS}
+
+Note: Console logs are not attached as mail() does not support attachments.
+"""
+                    mail to: 'sachinrasmitha@gmail.com',
+                         subject: "Build Summary – Tests: ${env.TEST_STATUS}, Scan: ${env.SCAN_STATUS}",
+                         body: message
                 }
             }
         }
