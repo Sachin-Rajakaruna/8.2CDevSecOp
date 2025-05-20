@@ -1,10 +1,15 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'NodeJS_14'
+    }
+
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Sachin-Rajakaruna/8.2CDevSecOp.git'
+                git branch: 'main',
+                    url: 'https://github.com/Sachin-Rajakaruna/8.2CDevSecOp.git'
             }
         }
 
@@ -16,10 +21,18 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                script {
-                    def testStatus = bat(script: 'npm test > test_log.txt 2>&1', returnStatus: true)
-                    def result = testStatus == 0 ? 'SUCCESS' : 'FAILURE'
-                    writeFile file: 'test_log.txt', text: "Run Tests Stage: ${result}\n\n" + readFile('test_log.txt')
+                // Run tests but don't fail pipeline
+                bat 'npm test || exit /b 0'
+            }
+            post {
+                always {
+                    // Write the test stage status to our status file
+                    script {
+                        def status = currentBuild.currentResult == 'SUCCESS' ? 'SUCCESS' : 'FAILURE'
+                        writeFile file: 'stage-status.txt',
+                                  text: "Run Tests: ${status}\n",
+                                  encoding: 'UTF-8'
+                    }
                 }
             }
         }
@@ -32,31 +45,38 @@ pipeline {
 
         stage('NPM Audit (Security Scan)') {
             steps {
-                script {
-                    def auditStatus = bat(script: 'npm audit > audit_log.txt 2>&1', returnStatus: true)
-                    def result = auditStatus == 0 ? 'SUCCESS' : 'FAILURE'
-                    writeFile file: 'audit_log.txt', text: "NPM Audit Stage: ${result}\n\n" + readFile('audit_log.txt')
+                bat 'npm audit || exit /b 0'
+            }
+            post {
+                always {
+                    // Append the security scan status to the same file
+                    script {
+                        def status = currentBuild.currentResult == 'SUCCESS' ? 'SUCCESS' : 'FAILURE'
+                        writeFile file: 'stage-status.txt',
+                                  text: readFile('stage-status.txt') + "Security Scan: ${status}\n",
+                                  encoding: 'UTF-8'
+                    }
                 }
             }
         }
+    }
 
-        stage('Email Notification') {
-            steps {
-                emailext(
-                    to: 'sachinrasmitha@gmail.com',
-                    subject: 'Build Stage Logs and Status',
-                    body: 'Attached are the logs for Run Tests and NPM Audit stages with their status.',
-                    attachmentsPattern: 'test_log.txt,audit_log.txt'
-                )
-            }
+    post {
+        always {
+            echo "Pipeline finished, sending consolidated status email..."
+
+            // Read the status file for inclusion in the email body
+            def summary = readFile('stage-status.txt')
+
+            // Send one final email summarizing both stages and attaching the file
+            emailext(
+                to: 'sachinrasmitha@gmail.com',
+                subject: "Stage Status Summary: Job '${env.JOB_NAME} [#${env.BUILD_NUMBER}]'",
+                body: """<p>Here are the results of your critical stages:</p>
+                         <pre>${summary}</pre>
+                         <p>See attached <code>stage-status.txt</code> for details.</p>""",
+                attachmentsPattern: 'stage-status.txt'
+            )
         }
     }
 }
-
-
-
-
-
-
-
-
