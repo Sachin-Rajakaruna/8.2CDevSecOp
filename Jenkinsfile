@@ -1,11 +1,6 @@
 pipeline {
     agent any
 
-    environment {
-        TEST_STATUS = 'UNKNOWN'
-        SCAN_STATUS = 'UNKNOWN'
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -22,11 +17,16 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
+                    // Use script-level variable for later reference
+                    if (!binding.hasVariable('testStatus')) {
+                        binding.setVariable('testStatus', 'UNKNOWN')
+                    }
+
                     def result = bat(script: 'npm test', returnStatus: true)
                     if (result == 0) {
-                        env.TEST_STATUS = 'SUCCESS'
+                        testStatus = 'SUCCESS'
                     } else {
-                        env.TEST_STATUS = 'FAILURE'
+                        testStatus = 'FAILURE'
                     }
                 }
             }
@@ -41,11 +41,15 @@ pipeline {
         stage('NPM Audit (Security Scan)') {
             steps {
                 script {
+                    if (!binding.hasVariable('scanStatus')) {
+                        binding.setVariable('scanStatus', 'UNKNOWN')
+                    }
+
                     def result = bat(script: 'npm audit', returnStatus: true)
                     if (result == 0) {
-                        env.SCAN_STATUS = 'SUCCESS'
+                        scanStatus = 'SUCCESS'
                     } else {
-                        env.SCAN_STATUS = 'FAILURE'
+                        scanStatus = 'FAILURE'
                     }
                 }
             }
@@ -58,13 +62,13 @@ pipeline {
 Build Completed.
 
 Stage Status:
-- Run Tests: ${env.TEST_STATUS}
-- Security Scan: ${env.SCAN_STATUS}
+- Run Tests: ${testStatus}
+- Security Scan: ${scanStatus}
 
-Note: Console logs are not attached as mail() does not support attachments.
+Note: Console logs are not attached.
 """
                     mail to: 'sachinrasmitha@gmail.com',
-                         subject: "Build Summary – Tests: ${env.TEST_STATUS}, Scan: ${env.SCAN_STATUS}",
+                         subject: "Build Summary – Tests: ${testStatus}, Scan: ${scanStatus}",
                          body: message
                 }
             }
