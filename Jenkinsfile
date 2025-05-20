@@ -17,14 +17,9 @@ pipeline {
         stage('Run Tests') {
             steps {
                 script {
-                    def testStatus = bat(script: 'npm test > email_noti_tests.txt 2>&1', returnStatus: true)
-                    def result = testStatus == 0 ? "SUCCESS" : "FAILURE"
-                    emailext(
-                        to: 'sachinrasmitha@gmail.com',
-                        subject: "Test Stage Result: ${result}",
-                        body: "The 'Run Tests' is completed with status: ${result}.\nCheck the attached test log.",
-                        attachmentsPattern: 'email_noti_tests.txt'
-                    )
+                    def testStatus = bat(script: 'npm test > test_log.txt 2>&1', returnStatus: true)
+                    def result = testStatus == 0 ? 'SUCCESS' : 'FAILURE'
+                    writeFile file: 'test_log.txt', text: "Run Tests Stage: ${result}\n\n" + readFile('test_log.txt')
                 }
             }
         }
@@ -38,16 +33,30 @@ pipeline {
         stage('NPM Audit (Security Scan)') {
             steps {
                 script {
-                    def auditStatus = bat(script: 'npm audit > email_noti_audit.txt 2>&1', returnStatus: true)
-                    def result = auditStatus == 0 ? "SUCCESS" : "FAILURE"
-                    emailext(
-                        to: 'sachinrasmitha@gmail.com',
-                        subject: "Security Scan Stage Result: Audit Status: ${result}",
-                        body: "The 'Security Scan' is completed with status: ${result}.\nCheck the attached audit log.",
-                        attachmentsPattern: 'email_noti_audit.txt'
-                    )
+                    def auditStatus = bat(script: 'npm audit > audit_log.txt 2>&1', returnStatus: true)
+                    def result = auditStatus == 0 ? 'SUCCESS' : 'FAILURE'
+                    writeFile file: 'audit_log.txt', text: "NPM Audit Stage: ${result}\n\n" + readFile('audit_log.txt')
                 }
+            }
+        }
+
+        stage('Email Notification') {
+            steps {
+                emailext(
+                    to: 'sachinrasmitha@gmail.com',
+                    subject: 'Build Stage Logs and Status',
+                    body: 'Attached are the logs for Run Tests and NPM Audit stages with their status.',
+                    attachmentsPattern: 'test_log.txt,audit_log.txt'
+                )
             }
         }
     }
 }
+
+
+
+
+
+
+
+
