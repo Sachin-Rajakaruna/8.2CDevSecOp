@@ -4,8 +4,7 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/Sachin-Rajakaruna/8.2CDevSecOp.git'
+                git branch: 'main', url: 'https://github.com/Sachin-Rajakaruna/8.2CDevSecOp.git'
             }
         }
 
@@ -17,15 +16,10 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                bat 'npm test || exit /b 0'
-            }
-            post {
-                always {
-                    script {
-                        // Overwrite or create the status file
-                        def status = currentBuild.currentResult == 'SUCCESS' ? 'SUCCESS' : 'FAILURE'
-                        writeFile file: 'stage-status.txt', text: "Run Tests: ${status}\n"
-                    }
+                script {
+                    def testStatus = bat(script: 'npm test > test_log.txt 2>&1', returnStatus: true)
+                    def result = testStatus == 0 ? 'SUCCESS' : 'FAILURE'
+                    writeFile file: 'test_log.txt', text: "Run Tests Stage: ${result}\n\n" + readFile('test_log.txt')
                 }
             }
         }
@@ -38,33 +32,21 @@ pipeline {
 
         stage('NPM Audit (Security Scan)') {
             steps {
-                bat 'npm audit || exit /b 0'
-            }
-            post {
-                always {
-                    script {
-                        // Append to the same file
-                        def prev = readFile('stage-status.txt')
-                        def status = currentBuild.currentResult == 'SUCCESS' ? 'SUCCESS' : 'FAILURE'
-                        writeFile file: 'stage-status.txt', text: prev + "Security Scan: ${status}\n"
-                    }
+                script {
+                    def auditStatus = bat(script: 'npm audit > audit_log.txt 2>&1', returnStatus: true)
+                    def result = auditStatus == 0 ? 'SUCCESS' : 'FAILURE'
+                    writeFile file: 'audit_log.txt', text: "NPM Audit Stage: ${result}\n\n" + readFile('audit_log.txt')
                 }
             }
         }
-    }
 
-    post {
-        always {
-            script {
-                echo "Pipeline finished, sending consolidated status email..."
-                def summary = readFile('stage-status.txt')
+        stage('Email Notification') {
+            steps {
                 emailext(
                     to: 'sachinrasmitha@gmail.com',
-                    subject: "Stage Status Summary: ${env.JOB_NAME} [#${env.BUILD_NUMBER}]",
-                    body: """<p>Here are the results of your critical stages:</p>
-<pre>${summary}</pre>
-<p>Attached is <strong>stage-status.txt</strong> with details.</p>""",
-                    attachmentsPattern: 'stage-status.txt'
+                    subject: 'Build Stage Logs and Status',
+                    body: 'Attached are the logs for Run Tests and NPM Audit stages with their status.',
+                    attachmentsPattern: 'test_log.txt,audit_log.txt'
                 )
             }
         }
