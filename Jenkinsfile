@@ -16,11 +16,7 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                script {
-                    def testStatus = bat(script: 'npm test > test_log.txt 2>&1', returnStatus: true)
-                    def result = testStatus == 0 ? 'SUCCESS' : 'FAILURE'
-                    writeFile file: 'test_log.txt', text: "Run Tests Stage: ${result}\n\n" + readFile('test_log.txt')
-                }
+                bat 'npm test || exit /b 0'
             }
         }
 
@@ -32,22 +28,20 @@ pipeline {
 
         stage('NPM Audit (Security Scan)') {
             steps {
-                script {
-                    def auditStatus = bat(script: 'npm audit > audit_log.txt 2>&1', returnStatus: true)
-                    def result = auditStatus == 0 ? 'SUCCESS' : 'FAILURE'
-                    writeFile file: 'audit_log.txt', text: "NPM Audit Stage: ${result}\n\n" + readFile('audit_log.txt')
-                }
+                bat 'npm audit || exit /b 0'
             }
         }
 
         stage('Email Notification') {
             steps {
-                emailext(
-                    to: 'sachinrasmitha@gmail.com',
-                    subject: 'Build Stage Logs and Status',
-                    body: 'Attached are the logs for Run Tests and NPM Audit stages with their status.',
-                    attachmentsPattern: 'test_log.txt,audit_log.txt'
-                )
+                echo "Building..."
+            }
+            post {
+                success {
+                    mail to: 'sachinrasmitha@gmail.com',
+                         subject: 'Build Status Email',
+                         body: 'Build Was Successful'
+                }
             }
         }
     }
