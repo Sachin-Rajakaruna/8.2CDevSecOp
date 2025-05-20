@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        TEST_STATUS = 'UNKNOWN'
+        SCAN_STATUS = 'UNKNOWN'
+    }
+
     stages {
         stage('Checkout') {
             steps {
@@ -16,7 +21,14 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                bat 'npm test || exit /b 0'
+                script {
+                    def result = bat(script: 'npm test', returnStatus: true)
+                    if (result == 0) {
+                        env.TEST_STATUS = 'SUCCESS'
+                    } else {
+                        env.TEST_STATUS = 'FAILURE'
+                    }
+                }
             }
         }
 
@@ -28,19 +40,30 @@ pipeline {
 
         stage('NPM Audit (Security Scan)') {
             steps {
-                bat 'npm audit || exit /b 0'
+                script {
+                    def result = bat(script: 'npm audit', returnStatus: true)
+                    if (result == 0) {
+                        env.SCAN_STATUS = 'SUCCESS'
+                    } else {
+                        env.SCAN_STATUS = 'FAILURE'
+                    }
+                }
             }
         }
 
         stage('Email Notification') {
             steps {
-                echo "Building..."
-            }
-            post {
-                success {
+                script {
+                    def message = """
+Build Was Successful
+
+Stage Results:
+- Run Tests: ${env.TEST_STATUS}
+- Security Scan: ${env.SCAN_STATUS}
+                    """
                     mail to: 'sachinrasmitha@gmail.com',
                          subject: 'Build Status Email',
-                         body: 'Build Was Successful'
+                         body: message
                 }
             }
         }
