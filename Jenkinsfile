@@ -1,10 +1,6 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS_14'
-    }
-
     stages {
         stage('Checkout') {
             steps {
@@ -21,17 +17,14 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                // Run tests but don't fail pipeline
                 bat 'npm test || exit /b 0'
             }
             post {
                 always {
-                    // Write the test stage status to our status file
                     script {
+                        // Overwrite or create the status file
                         def status = currentBuild.currentResult == 'SUCCESS' ? 'SUCCESS' : 'FAILURE'
-                        writeFile file: 'stage-status.txt',
-                                  text: "Run Tests: ${status}\n",
-                                  encoding: 'UTF-8'
+                        writeFile file: 'stage-status.txt', text: "Run Tests: ${status}\n"
                     }
                 }
             }
@@ -49,12 +42,11 @@ pipeline {
             }
             post {
                 always {
-                    // Append the security scan status to the same file
                     script {
+                        // Append to the same file
+                        def prev = readFile('stage-status.txt')
                         def status = currentBuild.currentResult == 'SUCCESS' ? 'SUCCESS' : 'FAILURE'
-                        writeFile file: 'stage-status.txt',
-                                  text: readFile('stage-status.txt') + "Security Scan: ${status}\n",
-                                  encoding: 'UTF-8'
+                        writeFile file: 'stage-status.txt', text: prev + "Security Scan: ${status}\n"
                     }
                 }
             }
@@ -63,20 +55,18 @@ pipeline {
 
     post {
         always {
-            echo "Pipeline finished, sending consolidated status email..."
-
-            // Read the status file for inclusion in the email body
-            def summary = readFile('stage-status.txt')
-
-            // Send one final email summarizing both stages and attaching the file
-            emailext(
-                to: 'sachinrasmitha@gmail.com',
-                subject: "Stage Status Summary: Job '${env.JOB_NAME} [#${env.BUILD_NUMBER}]'",
-                body: """<p>Here are the results of your critical stages:</p>
-                         <pre>${summary}</pre>
-                         <p>See attached <code>stage-status.txt</code> for details.</p>""",
-                attachmentsPattern: 'stage-status.txt'
-            )
+            script {
+                echo "Pipeline finished, sending consolidated status email..."
+                def summary = readFile('stage-status.txt')
+                emailext(
+                    to: 'sachinrasmitha@gmail.com',
+                    subject: "Stage Status Summary: ${env.JOB_NAME} [#${env.BUILD_NUMBER}]",
+                    body: """<p>Here are the results of your critical stages:</p>
+<pre>${summary}</pre>
+<p>Attached is <strong>stage-status.txt</strong> with details.</p>""",
+                    attachmentsPattern: 'stage-status.txt'
+                )
+            }
         }
     }
 }
