@@ -44,21 +44,20 @@ pipeline {
         stage('Email Notification') {
             steps {
                 script {
-                    def message = """
-                        <h3>Build Completed</h3>
-                        <p><strong>Stage Status:</strong></p>
-                        <ul>
-                            <li>Run Tests: <b>${testStatus}</b></li>
-                            <li>Security Scan: <b>${scanStatus}</b></li>
-                        </ul>
-                        <p>The full console log is attached.</p>
-                    """
+                    def message = """\
+Build Completed
+
+Stage Results:
+- Run Tests: ${testStatus}
+- Security Scan: ${scanStatus}
+
+The full console log is attached.
+"""
 
                     emailext(
                         to: 'sachinrasmitha@gmail.com',
                         subject: "Build Summary – Tests: ${testStatus}, Scan: ${scanStatus}",
                         body: message,
-                        mimeType: 'text/html',
                         attachLog: true
                     )
                 }
